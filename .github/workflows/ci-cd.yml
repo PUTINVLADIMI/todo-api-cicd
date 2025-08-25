@@ -35,7 +35,7 @@ jobs:
       
     # Paso 4: Ejecutar linting (si tienes ESLint configurado)
     - name: 🔍 Run linting
-      run: echo "Linting paso - aquí puedes agregar ESLint"
+      run: echo "✅ Linting paso - aquí puedes agregar ESLint en el futuro"
       
     # Paso 5: Ejecutar pruebas
     - name: 🧪 Run tests
@@ -44,11 +44,6 @@ jobs:
     # Paso 6: Generar reporte de cobertura
     - name: 📊 Generate coverage report
       run: npm run test:coverage
-      
-    # Paso 7: Subir reporte de cobertura (opcional)
-    - name: 📈 Upload coverage to Codecov
-      if: success()
-      run: echo "Aquí se puede subir a codecov o similar"
 
   # Job 2: Construir imagen Docker
   build:
@@ -85,60 +80,37 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
-  # Job 3: Despliegue (solo en rama main)
-  deploy:
-    name: 🚀 Deploy to Production
+  # Job 3: Notificaciones y resumen
+  notify:
+    name: 📢 Pipeline Summary
     runs-on: ubuntu-latest
     needs: [test, build]
-    if: github.ref == 'refs/heads/main'
-    
-    environment:
-      name: production
-      url: https://todo-api-cicd-production.up.railway.app
-      
-    steps:
-    - name: 📥 Checkout code
-      uses: actions/checkout@v4
-      
-    # Instalar Railway CLI
-    - name: 🚂 Install Railway CLI
-      run: |
-        curl -fsSL https://railway.app/install.sh | sh
-        echo "$HOME/.railway/bin" >> $GITHUB_PATH
-        
-    # Desplegar a Railway
-    - name: 🚀 Deploy to Railway
-      env:
-        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-      run: |
-        railway up --detach --project ${{ secrets.RAILWAY_PROJECT_ID }}
-
-        
-    # Verificar despliegue
-    - name: 🩺 Health check
-      run: |
-        echo "Esperando 30 segundos para que el despliegue se complete..."
-        sleep 30
-        echo "Verificando health check..."
-        curl -f https://todo-api-cicd-production.up.railway.app/health || echo "Health check falló - la app puede estar iniciando"
-        
-    # Notificar éxito
-    - name: 📢 Notify success
-      run: echo "✅ Despliegue exitoso a producción"
-
-  # Job 4: Notificaciones
-  notify:
-    name: 📢 Notifications
-    runs-on: ubuntu-latest
-    needs: [test, build, deploy]
     if: always()
     
     steps:
-    - name: 📧 Send notification
+    - name: 📧 Pipeline Results
       run: |
-        if [ "${{ needs.deploy.result }}" == "success" ]; then
-          echo "✅ Pipeline completado exitosamente"
-          echo "🚀 Aplicación desplegada: https://todo-api-cicd-production.up.railway.app"
+        echo "=== RESUMEN DEL PIPELINE ==="
+        echo ""
+        if [ "${{ needs.test.result }}" == "success" ]; then
+          echo "✅ TESTS: Todas las pruebas pasaron correctamente"
         else
-          echo "❌ Pipeline falló en algún paso"
+          echo "❌ TESTS: Falló en las pruebas - revisar código"
+        fi
+        
+        if [ "${{ needs.build.result }}" == "success" ]; then
+          echo "✅ BUILD: Imagen Docker creada exitosamente"
+        else
+          echo "❌ BUILD: Error al construir imagen Docker"
+        fi
+        
+        echo ""
+        echo "🚂 DEPLOY: Railway maneja el despliegue automáticamente"
+        echo "🌐 URL: https://todo-api-cicd-production.up.railway.app"
+        echo ""
+        
+        if [ "${{ needs.test.result }}" == "success" ] && [ "${{ needs.build.result }}" == "success" ]; then
+          echo "🎉 PIPELINE COMPLETADO EXITOSAMENTE"
+        else
+          echo "🚨 PIPELINE FALLÓ - Revisar logs arriba"
         fi

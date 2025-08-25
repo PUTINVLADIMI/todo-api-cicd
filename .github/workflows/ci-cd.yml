@@ -111,8 +111,8 @@ jobs:
       env:
         RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
       run: |
-        railway login --token $RAILWAY_TOKEN
         railway up --detach
+
         
     # Verificar despliegue
     - name: 🩺 Health check

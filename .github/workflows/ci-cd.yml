@@ -1,0 +1,135 @@
+name: CI/CD Pipeline
+
+# Cuándo se ejecuta el pipeline
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+# Variables de entorno globales
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  # Job 1: Pruebas y análisis de código
+  test:
+    name: 🧪 Tests & Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+    # Paso 1: Checkout del código
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    # Paso 2: Configurar Node.js
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    # Paso 3: Instalar dependencias
+    - name: 📦 Install dependencies
+      run: npm ci
+      
+    # Paso 4: Ejecutar linting (si tienes ESLint configurado)
+    - name: 🔍 Run linting
+      run: echo "Linting paso - aquí puedes agregar ESLint"
+      
+    # Paso 5: Ejecutar pruebas
+    - name: 🧪 Run tests
+      run: npm test
+      
+    # Paso 6: Generar reporte de cobertura
+    - name: 📊 Generate coverage report
+      run: npm run test:coverage
+      
+    # Paso 7: Subir reporte de cobertura (opcional)
+    - name: 📈 Upload coverage to Codecov
+      if: success()
+      run: echo "Aquí se puede subir a codecov o similar"
+
+  # Job 2: Construir imagen Docker
+  build:
+    name: 🏗️ Build Docker Image
+    runs-on: ubuntu-latest
+    needs: test # Solo ejecutar si las pruebas pasan
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    # Configurar Docker Buildx
+    - name: 🐳 Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    # Login a Docker Hub (solo para push a main)
+    - name: 🔐 Login to Docker Hub
+      if: github.ref == 'refs/heads/main'
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+        
+    # Construir imagen Docker
+    - name: 🏗️ Build Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: ${{ github.ref == 'refs/heads/main' }}
+        tags: |
+          ${{ secrets.DOCKER_USERNAME }}/todo-api:latest
+          ${{ secrets.DOCKER_USERNAME }}/todo-api:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # Job 3: Despliegue (solo en rama main)
+  deploy:
+    name: 🚀 Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [test, build]
+    if: github.ref == 'refs/heads/main'
+    
+    environment:
+      name: production
+      url: https://tu-app.railway.app
+      
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    # Desplegar a Railway
+    - name: 🚂 Deploy to Railway
+      uses: railwayapp/railway-deploy@v2
+      with:
+        railway_token: ${{ secrets.RAILWAY_TOKEN }}
+        service: 'todo-api'
+        
+    # Verificar despliegue
+    - name: 🩺 Health check
+      run: |
+        sleep 30
+        curl -f https://tu-app.railway.app/health || exit 1
+        
+    # Notificar éxito
+    - name: 📢 Notify success
+      run: echo "✅ Despliegue exitoso a producción"
+
+  # Job 4: Notificaciones
+  notify:
+    name: 📢 Notifications
+    runs-on: ubuntu-latest
+    needs: [test, build, deploy]
+    if: always()
+    
+    steps:
+    - name: 📧 Send notification
+      run: |
+        if [ "${{ needs.deploy.result }}" == "success" ]; then
+          echo "✅ Pipeline completado exitosamente"
+          echo "🚀 Aplicación desplegada: https://tu-app.railway.app"
+        else
+          echo "❌ Pipeline falló en algún paso"
+        fi

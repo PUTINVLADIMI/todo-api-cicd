@@ -94,7 +94,7 @@ jobs:
     
     environment:
       name: production
-      url: https://tu-app.railway.app
+      url: https://todo-api-cicd-production.up.railway.app
       
     steps:
     - name: 📥 Checkout code
@@ -111,7 +111,7 @@ jobs:
     - name: 🩺 Health check
       run: |
         sleep 30
-        curl -f https://tu-app.railway.app/health || exit 1
+        curl -f https://todo-api-cicd-production.up.railway.app/health || exit 1
         
     # Notificar éxito
     - name: 📢 Notify success
@@ -129,7 +129,7 @@ jobs:
       run: |
         if [ "${{ needs.deploy.result }}" == "success" ]; then
           echo "✅ Pipeline completado exitosamente"
-          echo "🚀 Aplicación desplegada: https://tu-app.railway.app"
+          echo "🚀 Aplicación desplegada: https://todo-api-cicd-production.up.railway.app"
         else
           echo "❌ Pipeline falló en algún paso"
         fi

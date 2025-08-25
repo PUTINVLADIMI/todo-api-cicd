@@ -87,7 +87,7 @@ jobs:
 
   # Job 3: Despliegue (solo en rama main)
   deploy:
-    name: Deploy to Production
+    name: 🚀 Deploy to Production
     runs-on: ubuntu-latest
     needs: [test, build]
     if: github.ref == 'refs/heads/main'
@@ -97,18 +97,25 @@ jobs:
       url: https://todo-api-cicd-production.up.railway.app
       
     steps:
-    - name: Checkout code
+    - name: 📥 Checkout code
       uses: actions/checkout@v4
       
-    # Deploy using Railway's official GitHub Action
-    - name: Deploy to Railway
-      uses: bervProject/railway-deploy@main
-      with:
-        railway_token: ${{ secrets.RAILWAY_TOKEN }}
-        service: todo-api-cicd
+    # Instalar Railway CLI
+    - name: 🚂 Install Railway CLI
+      run: |
+        curl -fsSL https://railway.app/install.sh | sh
+        echo "$HOME/.railway/bin" >> $GITHUB_PATH
+        
+    # Desplegar a Railway
+    - name: 🚀 Deploy to Railway
+      env:
+        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      run: |
+        railway up --detach --project ${{ secrets.RAILWAY_PROJECT_ID }}
+
         
     # Verificar despliegue
-    - name: Health check
+    - name: 🩺 Health check
       run: |
         echo "Esperando 30 segundos para que el despliegue se complete..."
         sleep 30
@@ -116,8 +123,8 @@ jobs:
         curl -f https://todo-api-cicd-production.up.railway.app/health || echo "Health check falló - la app puede estar iniciando"
         
     # Notificar éxito
-    - name: Notify success
-      run: echo "Despliegue exitoso a producción"
+    - name: 📢 Notify success
+      run: echo "✅ Despliegue exitoso a producción"
 
   # Job 4: Notificaciones
   notify:
